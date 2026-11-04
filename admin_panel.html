@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de usuarios — Yape</title>
+<style>
+  :root {
+    --purple: #790699;
+    --purple-dark: #53006c;
+    --mint: #00b894;
+    --bg: #f6f4f9;
+    --card: #ffffff;
+    --text: #2c2044;
+    --text-gray: #6b6478;
+    --border: #e7e2ee;
+    --danger: #e05353;
+    --gray-light: #f0ecf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+  /* ---- Tabs ---- */
+  .admin-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 0; }
+  .admin-tab { background: none; border: none; padding: 10px 18px; font-size: 14px; font-weight: 600; color: var(--text-gray); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .2s, border-color .2s; }
+  .admin-tab.active { color: var(--purple); border-bottom-color: var(--purple); }
+
+  /* ---- Voucher editor ---- */
+  #voucherSection { display: none; }
+  #voucherSection.active { display: block; }
+  #usersSection { display: block; }
+  #usersSection.active { display: block; }
+
+  .vchr-editor-wrap { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .vchr-controls { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 14px; }
+  .vchr-preview-wrap { flex: 1; min-width: 281px; max-width: 320px; position: sticky; top: 20px; }
+  .vchr-preview-frame { width: 100%; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 32px rgba(104,3,135,0.18); background: #680387; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+  .ctrl-group { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .ctrl-group-title { font-size: 11px; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px; }
+  .ctrl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-label { font-size: 12px; font-weight: 600; color: var(--text); min-width: 110px; flex-shrink: 0; }
+  .ctrl-row input[type=range] { flex: 1; accent-color: var(--purple); }
+  .ctrl-row input[type=text], .ctrl-row input[type=url], .ctrl-row input[type=color] { flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px; color: var(--text); outline: none; }
+  .ctrl-row input[type=color] { width: 44px; height: 34px; padding: 2px 4px; cursor: pointer; flex: 0; }
+  .ctrl-val { font-size: 12px; color: var(--text-gray); min-width: 36px; text-align: right; }
+  .ctrl-stepper { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+  .ctrl-stepper input[type=range] { flex: 1; min-width: 0; }
+  .step-btn { background: var(--purple); color: #fff; border: none; border-radius: 6px; width: 28px; height: 28px; font-size: 18px; font-weight: 700; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; touch-action: manipulation; user-select: none; }
+  .step-btn:active { opacity: 0.7; }
+  .vchr-save-btn { width: 100%; padding: 14px; background: var(--purple); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity .15s; }
+  .vchr-save-btn:active { opacity: .85; }
+  .vchr-save-msg { text-align: center; font-size: 13px; font-weight: 600; color: var(--mint); margin-top: 8px; min-height: 20px; }
+
+  /* ===== CSS Variables del receipt (igual que index.html) ===== */
+  :root {
+    --voucher-purple: #680387;
+    --voucher-purple-dark: #53006C;
+    --voucher-teal: #00C7B1;
+    --voucher-text-dark: #2C2044;
+    --voucher-text-gray: #6B6478;
+    --voucher-card-bg: #FFFFFF;
+    --voucher-chip-bg: #F0EEF4;
+  }
+
+  /* ===== Estilos exactos del receipt (copiados de index.html) ===== */
+  /* pvr-wrap: valores calculados de clamp() al ancho de 390px, igual que index.html en móvil */
+  .pvr-wrap { width: 390px; background: var(--voucher-purple); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  .pvr-wrap .vchr-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 0px 23px 50px; position: relative; }
+  .pvr-wrap .vchr-header-ad { position: absolute; left: 50%; top: 58%; transform: translate(-50%,-50%); width: 437px; max-width: 96%; height: auto; max-height: 240px; object-fit: contain; pointer-events: none; z-index: 1; }
+  .pvr-wrap .vchr-logo { display: flex; flex-direction: column; position: relative; z-index: 2; align-items: flex-start; line-height: 0.85; margin-left: 14px; margin-top: 20px; }
+  .pvr-wrap .vchr-logo-gif { width: 70px; height: auto; object-fit: contain; margin-top: 21px; }
+  .pvr-wrap .vchr-logo-text { font-family: 'Brush Script MT', 'Segoe Script', cursive; font-style: italic; font-weight: 700; color: #fff; font-size: 33px; margin-top: -2px; }
+  .pvr-wrap .vchr-close-btn { width: 46px; height: 46px; border-radius: 50%; background: #8B3C99; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; position: relative; z-index: 2; margin-top: 15px; margin-right: -10px; }
+  .pvr-wrap .vchr-close-btn svg { width: 42%; height: 42%; }
+  .pvr-wrap .vchr-card { background: var(--voucher-card-bg); margin: 6px 18px 0; border-radius: 18px; padding: 20px 21px 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.18); position: relative; z-index: 3; }
+  .pvr-wrap .vchr-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .pvr-wrap .vchr-card-title { color: #8B3C99; font-size: 22px; font-weight: 700; font-family: Arial, Helvetica, sans-serif; margin-top: -3px; }
+  .pvr-wrap .vchr-share { display: flex; align-items: center; gap: 6px; color: var(--voucher-teal); font-weight: 600; font-size: 14px; }
+  .pvr-wrap .vchr-share svg { width: 16px; height: 16px; }
+  .pvr-wrap .vchr-amount-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 8px; }
+  .pvr-wrap .vchr-amount-currency { color: #403556; font-size: 31px; font-weight: 800; line-height: 1; align-self: flex-start; transform: translateY(0.2em); }
+  .pvr-wrap .vchr-amount-value { color: #403556; font-size: 53px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
+  .pvr-wrap .vchr-receiver { color: var(--voucher-text-dark); font-size: 22px; font-weight: 600; margin-bottom: 9px; }
+  .pvr-wrap .vchr-datetime { display: flex; align-items: center; gap: 12px; color: var(--voucher-text-gray); font-size: 15px; font-weight: 500; margin-bottom: 12px; }
+  .pvr-wrap .vchr-datetime .item { display: flex; align-items: center; gap: 6px; }
+  .pvr-wrap .vchr-datetime svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .pvr-wrap .vchr-divider { height: 1px; background: #E4E1EA; margin: 12px 0 10px; }
+  .pvr-wrap .vchr-security-row { display: flex; justify-content: space-between; align-items: center; margin: 9px 0; }
+  .pvr-wrap .vchr-security-label { display: flex; align-items: center; gap: 8px; color: #86808F; font-size: 12.5px; font-weight: 700; letter-spacing: 0.3px; white-space: nowrap; }
+  .pvr-wrap .vchr-info-icon { width: 18px; height: 18px; border-radius: 50%; background: var(--voucher-teal); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; font-style: italic; flex-shrink: 0; }
+  .pvr-wrap .vchr-code-chips { display: flex; gap: 8px; }
+  .pvr-wrap .vchr-chip { background: var(--voucher-chip-bg); color: var(--voucher-text-dark); font-weight: 700; font-size: 17px; width: 27px; height: 27px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+  .pvr-wrap .vchr-section-label { color: #86808F; font-size: 12px; font-weight: 700; letter-spacing: 0.3px; margin: 18px 0 15px; }
+  .pvr-wrap .vchr-data-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+  .pvr-wrap .vchr-data-label { color: var(--voucher-text-dark); font-size: 14.5px; }
+  .pvr-wrap .vchr-data-value { color: var(--voucher-text-dark); font-size: 15px; font-weight: 600; }
+  .pvr-wrap .vchr-promo-wrap { margin: 54px 18px 0; background: var(--voucher-purple-dark); border-radius: 16px; padding: 10px; overflow: hidden; }
+  .pvr-wrap .vchr-promo-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .pvr-wrap .vchr-promo-title { color: #fff; font-size: 20px; font-weight: 800; }
+  .pvr-wrap .vchr-promo-badge { background: #FFC93C; color: #4A3300; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; }
+  .pvr-wrap .vchr-promo-card { background: #fff; border-radius: 12px; display: flex; overflow: hidden; width: 100%; }
+  .pvr-wrap .vchr-promo-img-full { width: 100%; height: auto; display: block; border-radius: 12px; }
+
+  body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+
+  /* ---- Login gate ---- */
+  #gate {
+    position: fixed; inset: 0; background: linear-gradient(160deg, var(--purple), var(--purple-dark));
+    display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 10;
+  }
+  #gate.hidden { display: none; }
+  .gate-box { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); border-radius: 20px; padding: 32px 28px; width: 100%; max-width: 360px; backdrop-filter: blur(6px); }
+  .gate-box h1 { color: #fff; font-size: 20px; margin-bottom: 6px; }
+  .gate-box p { color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 22px; }
+  .gate-box input { width: 100%; padding: 13px 14px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: #fff; font-size: 15px; outline: none; margin-bottom: 14px; }
+  .gate-box input::placeholder { color: rgba(255,255,255,0.5); }
+  .gate-box button { width: 100%; padding: 13px; border-radius: 12px; border: none; background: var(--mint); color: #04352a; font-weight: 700; font-size: 15px; cursor: pointer; }
+  .gate-box button:active { opacity: 0.85; }
+  .gate-error { color: #ffb4b4; font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+  /* ---- Main panel ---- */
+  #panel { display: none; max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+  #panel.visible { display: block; }
+  header.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  header.top h1 { font-size: 20px; color: var(--purple); }
+  header.top .sub { font-size: 13px; color: var(--text-gray); margin-top: 2px; }
+  #refreshBtn { background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 600; color: var(--purple); cursor: pointer; }
+  #refreshBtn:active { transform: scale(0.97); }
+
+  .stats { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; flex: 1; min-width: 110px; }
+  .stat-card .n { font-size: 24px; font-weight: 800; color: var(--purple); }
+  .stat-card .l { font-size: 12px; color: var(--text-gray); margin-top: 2px; }
+
+  #userList { display: flex; flex-direction: column; gap: 10px; }
+
+  .search-box { margin-bottom: 14px; }
+  .search-box input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--card); color: var(--text); font-size: 14px; outline: none; }
+  .search-box input:focus { border-color: var(--purple); }
+  .search-box input::placeholder { color: var(--text-gray); }
+  #noSearchResults { display: none; text-align: center; color: var(--text-gray); padding: 30px 20px; font-size: 14px; }
+
+  .pw-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 18px; }
+  .pw-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .pw-top h2 { font-size: 15px; color: var(--purple); }
+  .pw-top .sub { font-size: 12px; color: var(--text-gray); margin-top: 2px; }
+  #genPwBtn { background: var(--mint); border: none; border-radius: 10px; padding: 10px 16px; font-size: 13px; font-weight: 700; color: #04352a; cursor: pointer; white-space: nowrap; }
+  #genPwBtn:active { opacity: 0.85; }
+  .pw-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .pw-row:last-child { border-bottom: none; }
+  .pw-code { font-family: monospace; font-weight: 700; color: var(--text); }
+  .pw-status { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .pw-status.available { background: #e3f9ee; color: #0e6b45; }
+  .pw-status.used { background: #f1eef6; color: var(--text-gray); }
+  .pw-empty { text-align: center; color: var(--text-gray); padding: 16px; font-size: 13px; }
+  .user-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+  .user-card.blocked { border-color: rgba(224,83,83,0.4); background: #fff7f7; }
+  .user-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .user-id { font-size: 11px; color: var(--text-gray); font-family: monospace; word-break: break-all; }
+  .user-password-row { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+  .user-password-dots { font-size: 12px; color: var(--text-gray); font-family: monospace; letter-spacing: 1px; }
+  .user-password-toggle { background: none; border: none; color: var(--purple); font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 0; }
+  .user-password-toggle:active { opacity: 0.7; }
+  .user-label-input { border: 1px solid transparent; background: transparent; font-size: 15px; font-weight: 700; color: var(--text); padding: 3px 6px; border-radius: 6px; width: 100%; }
+  .user-label-input:focus { border-color: var(--border); background: #faf9fc; outline: none; }
+  .badge { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .badge.active { background: #e3f9ee; color: #0e6b45; }
+  .badge.blocked { background: #fdeaea; color: var(--danger); }
+  .user-meta { font-size: 12px; color: var(--text-gray); display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  .online-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .online-dot.on { background: var(--mint); }
+  .online-dot.off { background: #ccc; }
+  .activity-panel { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .activity-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .activity-row:last-child { border-bottom: none; }
+  .activity-month-title { font-size: 13px; font-weight: 700; color: var(--purple); text-transform: capitalize; margin: 4px 0 6px; }
+  .activity-total { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; color: var(--text); padding-top: 8px; margin-top: 4px; border-top: 2px solid var(--border); }
+  .activity-total::before { content: 'Total'; }
+  .activity-month-btn {
+    width: 100%; display: flex; justify-content: space-between; align-items: center;
+    background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; margin: 8px 0; font-size: 13px; font-weight: 600; color: var(--text);
+    cursor: pointer; font-family: inherit;
+  }
+  .activity-month-btn:active { background: var(--border); }
+  .activity-month-detail { margin: 0 0 8px 0; padding: 6px 8px; background: var(--gray-light); border-radius: 8px; }
+  .activity-name { flex: 1; min-width: 0; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .activity-amount { color: var(--danger); font-weight: 700; white-space: nowrap; }
+  .activity-date { color: var(--text-gray); font-size: 11.5px; white-space: nowrap; }
+  .user-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .user-actions button { border: none; border-radius: 9px; padding: 8px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .btn-add { background: #e3f9ee; color: #0e6b45; }
+  .btn-add:active { opacity: 0.8; }
+  .btn-block { background: #fdf2e0; color: #a86a00; }
+  .btn-block:active { opacity: 0.8; }
+  .btn-remove { background: #fdeaea; color: var(--danger); margin-left: auto; }
+  .btn-remove:active { opacity: 0.8; }
+  .btn-days-input { width: 54px; border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 6px; font-size: 13px; text-align: center; }
+
+  #emptyMsg { text-align: center; color: var(--text-gray); padding: 60px 20px; font-size: 14px; }
+  #loadingMsg { text-align: center; color: var(--text-gray); padding: 60px 20px; font-size: 14px; }
+
+  .section-block { margin-bottom: 22px; }
+  .section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 8px 2px; cursor: pointer; user-select: none; }
+  .section-head h3 { font-size: 14px; color: var(--purple); }
+  .section-arrow { font-size: 11px; color: var(--text-gray); transition: transform 0.2s ease; margin-left: auto; }
+  .section-block.open .section-arrow { transform: rotate(90deg); }
+  .section-body { display: none; }
+  .section-block.open .section-body { display: block; }
+  .section-count { font-size: 11px; font-weight: 700; color: var(--text-gray); background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; }
+  .section-empty { font-size: 13px; color: var(--text-gray); padding: 14px; background: var(--card); border: 1px dashed var(--border); border-radius: 12px; text-align: center; }
+  .section-users { display: flex; flex-direction: column; gap: 10px; }
+
+  .user-top-row { display: flex; align-items: flex-start; gap: 6px; }
+  .move-menu-wrap { position: relative; flex-shrink: 0; }
+  .move-dots-btn { background: transparent; border: none; font-size: 18px; font-weight: 900; color: var(--text-gray); cursor: pointer; padding: 4px 8px; border-radius: 8px; line-height: 1; }
+  .move-dots-btn:active { background: var(--bg); }
+  .move-menu { position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); min-width: 170px; z-index: 5; overflow: hidden; display: none; }
+  .move-menu.open { display: block; }
+  .move-menu-label { font-size: 11px; color: var(--text-gray); padding: 8px 12px 4px; }
+  .move-menu button { width: 100%; text-align: left; background: none; border: none; padding: 10px 12px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; }
+  .move-menu button:active { background: var(--bg); }
+  .move-menu button.current { color: var(--text-gray); font-weight: 400; }
+
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .yap-row { border-bottom: 1px solid var(--border); padding: 10px 0; }
+  .yap-row:last-child { border-bottom: none; }
+  .yap-view { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .yap-info { min-width: 0; }
+  .yap-name { font-weight: 700; font-size: 14px; color: var(--text); word-break: break-word; }
+  .yap-phone { font-size: 12px; color: var(--text-gray); font-family: monospace; }
+  .yap-edit { display: flex; flex-direction: column; gap: 8px; }
+  .yap-edit input { padding: 9px 10px; border-radius: 9px; border: 1.5px solid var(--border); font-size: 13px; }
+  .yap-edit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+  <div id="gate">
+    <div class="gate-box">
+      <h1>Panel de usuarios</h1>
+      <p>Ingresa tu clave de administrador (ADMIN_KEY) para continuar.</p>
+      <input type="password" id="gateInput" placeholder="Clave de administrador" autocomplete="off">
+      <input type="text" id="workerUrlInput" placeholder="URL de tu Worker (https://...workers.dev)" autocomplete="off">
+      <input type="text" id="appUrlInput" placeholder="URL de tu app (https://tuusuario.github.io/...)" autocomplete="off">
+      <button onclick="gateLogin()">Entrar</button>
+      <div class="gate-error" id="gateError"></div>
+    </div>
+  </div>
+
+  <div id="panel">
+    <header class="top">
+      <div>
+        <h1 id="panelTitle">Usuarios de la app</h1>
+        <div class="sub" id="workerUrlLabel"></div>
+      </div>
+      <div class="header-actions">
+        <button id="refreshBtn" onclick="loadUsers()">Actualizar</button>
+        <button id="toggleYapBtn" onclick="toggleYapRecords()">Ver registros</button>
+      </div>
+    </header>
+
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchTab('users')">&#128101; Usuarios</button>
+      <button class="admin-tab" onclick="switchTab('voucher')">&#127915; Voucher</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card"><div class="n" id="statTotal">—</div><div class="l">Usuarios</div></div>
+      <div class="stat-card"><div class="n" id="statActive">—</div><div class="l">Con acceso</div></div>
+      <div class="stat-card"><div class="n" id="statBlocked">—</div><div class="l">Bloqueados</div></div>
+    </div>
+
+    <div class="pw-section" id="yapRecordsSection" style="display:none;">
+      <div class="pw-top">
+        <div>
+          <h2>Últimos registros de Yapeados</h2>
+          <div class="sub">Los 50 más recientes, del más nuevo al más antiguo.</div>
+        </div>
+        <button id="refreshYapBtn" onclick="loadYapRecords()">Actualizar</button>
+      </div>
+      <div class="search-box">
+        <input type="text" id="yapSearchInput" placeholder="Buscar por número o nombre..." oninput="searchYapRecords(this.value)">
+      </div>
+      <div id="yapRecordsList"></div>
+    </div>
+
+    <!-- SECCIÓN USUARIOS -->
+    <div id="usersSection">
+    <div class="search-box">
+      <input type="text" id="searchIdInput" placeholder="Buscar por nombre o ID..." oninput="filterUsersById(this.value)">
+    </div>
+    <div id="loadingMsg">Cargando usuarios...</div>
+    <div id="emptyMsg" style="display:none;">Todavía no se ha conectado ningún celular.</div>
+    <div id="noSearchResults">No se encontró ningún usuario con ese nombre o ID.</div>
+    <div id="sectionsWrap"></div>
+    </div>
+
+    <!-- SECCIÓN VOUCHER EDITOR -->
+    <div id="voucherSection">
+      <div class="vchr-editor-wrap">
+
+        <!-- CONTROLES -->
+        <div class="vchr-controls">
+
+          <div class="ctrl-group">
+            <div class="ctrl-group-title">🖼️ Imágenes</div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">URL GIF/Logo</span>
+              <input type="url" id="vc-logoGif" placeholder="https://..." oninput="pvUpdate()">
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">URL Foto compartir</span>
+              <input type="url" id="vc-staticLogo" placeholder="https://..." oninput="pvUpdate()">
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">URL Billete fondo</span>
+              <input type="url" id="vc-headerAd" placeholder="https://..." oninput="pvUpdate()">
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">URL Anuncio</span>
+              <input type="url" id="vc-promoImg" placeholder="https://..." oninput="pvUpdate()">
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-group-title">📐 Tamaños de texto</div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Monto (número)</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('amountSize',-1)">−</button>
+                <input type="range" id="vc-amountSize" min="40" max="120" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('amountSize',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-amountSize-val">72px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Símbolo S/</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('currencySize',-1)">−</button>
+                <input type="range" id="vc-currencySize" min="16" max="70" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('currencySize',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-currencySize-val">34px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Nombre receptor</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('receiverSize',-1)">−</button>
+                <input type="range" id="vc-receiverSize" min="10" max="36" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('receiverSize',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-receiverSize-val">18px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Texto datos</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('dataSize',-1)">−</button>
+                <input type="range" id="vc-dataSize" min="8" max="22" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('dataSize',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-dataSize-val">13px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Cód. seguridad</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('secLabelSize',-1)">−</button>
+                <input type="range" id="vc-secLabelSize" min="8" max="20" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('secLabelSize',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-secLabelSize-val">12px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Dígitos cód.</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('chipSize',-1)">−</button>
+                <input type="range" id="vc-chipSize" min="12" max="40" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('chipSize',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-chipSize-val">22px</span>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-group-title">➖ Líneas separadoras</div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Grosor</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('dividerHeight',-1)">−</button>
+                <input type="range" id="vc-dividerHeight" min="1" max="8" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('dividerHeight',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-dividerHeight-val">1px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Color</span>
+              <input type="color" id="vc-dividerColor" value="#E4E1EA" oninput="pvUpdate()">
+              <input type="text" id="vc-dividerColorText" value="#E4E1EA" oninput="syncColor('dividerColor')" style="max-width:90px;">
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Margen arriba/abajo</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('dividerMargin',-1)">−</button>
+                <input type="range" id="vc-dividerMargin" min="2" max="40" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('dividerMargin',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-dividerMargin-val">14px</span>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-group-title">📏 Billete y logo</div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Alto billete</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('headerHeight',-1)">−</button>
+                <input type="range" id="vc-headerHeight" min="80" max="300" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('headerHeight',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-headerHeight-val">160px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Imagen billete ↕</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('headerAdTop',-1)">−</button>
+                <input type="range" id="vc-headerAdTop" min="20" max="80" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('headerAdTop',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-headerAdTop-val">52px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Tamaño logo</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('logoSize',-1)">−</button>
+                <input type="range" id="vc-logoSize" min="20" max="120" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('logoSize',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-logoSize-val">54px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Logo ↕ (arriba)</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('logoTop',-1)">−</button>
+                <input type="range" id="vc-logoTop" min="0" max="100" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('logoTop',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-logoTop-val">20px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Logo ↔ (izquierda)</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('logoLeft',-1)">−</button>
+                <input type="range" id="vc-logoLeft" min="0" max="100" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('logoLeft',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-logoLeft-val">20px</span>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-group-title">✖️ Botón cerrar (X)</div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Tamaño</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('closeSize',-1)">−</button>
+                <input type="range" id="vc-closeSize" min="24" max="80" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('closeSize',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-closeSize-val">48px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Posición ↕ (arriba)</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('closeTop',-1)">−</button>
+                <input type="range" id="vc-closeTop" min="0" max="80" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('closeTop',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-closeTop-val">12px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Posición ↔ (derecha)</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('closeRight',-1)">−</button>
+                <input type="range" id="vc-closeRight" min="0" max="80" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('closeRight',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-closeRight-val">12px</span>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-group-title">🃏 Tarjeta blanca</div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Margen lados</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('cardMargin',-1)">−</button>
+                <input type="range" id="vc-cardMargin" min="0" max="40" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('cardMargin',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-cardMargin-val">10px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Radio esquinas</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('cardRadius',-1)">−</button>
+                <input type="range" id="vc-cardRadius" min="0" max="40" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('cardRadius',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-cardRadius-val">20px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Padding horizontal</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('cardPaddingH',-1)">−</button>
+                <input type="range" id="vc-cardPaddingH" min="8" max="50" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('cardPaddingH',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-cardPaddingH-val">22px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Padding arriba</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('cardPaddingTop',-1)">−</button>
+                <input type="range" id="vc-cardPaddingTop" min="4" max="50" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('cardPaddingTop',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-cardPaddingTop-val">20px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Padding abajo</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('cardPaddingBottom',-1)">−</button>
+                <input type="range" id="vc-cardPaddingBottom" min="4" max="50" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('cardPaddingBottom',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-cardPaddingBottom-val">8px</span>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-group-title">🔢 Código de seguridad</div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Separación chips</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('chipGap',-1)">−</button>
+                <input type="range" id="vc-chipGap" min="2" max="30" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('chipGap',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-chipGap-val">8px</span>
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Margen lateral fila</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('secRowPadding',-1)">−</button>
+                <input type="range" id="vc-secRowPadding" min="0" max="60" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('secRowPadding',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-secRowPadding-val">0px</span>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-group-title">📢 Anuncio inferior</div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Margen superior</span>
+              <div class="ctrl-stepper">
+                <button class="step-btn" onclick="adjustVal('promoMarginTop',-1)">−</button>
+                <input type="range" id="vc-promoMarginTop" min="0" max="100" step="1" oninput="pvUpdate()">
+                <button class="step-btn" onclick="adjustVal('promoMarginTop',+1)">+</button>
+              </div>
+              <span class="ctrl-val" id="vc-promoMarginTop-val">10px</span>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-group-title">🎨 Colores</div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Fondo voucher</span>
+              <input type="color" id="vc-bgColor" value="#680387" oninput="pvUpdate()">
+              <input type="text" id="vc-bgColorText" value="#680387" oninput="syncColor('bgColor')" style="max-width:90px;">
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Botón X</span>
+              <input type="color" id="vc-closeColor" value="#8B3C99" oninput="pvUpdate()">
+              <input type="text" id="vc-closeColorText" value="#8B3C99" oninput="syncColor('closeColor')" style="max-width:90px;">
+            </div>
+            <div class="ctrl-row">
+              <span class="ctrl-label">Texto monto</span>
+              <input type="color" id="vc-amountColor" value="#2C2044" oninput="pvUpdate()">
+              <input type="text" id="vc-amountColorText" value="#2C2044" oninput="syncColor('amountColor')" style="max-width:90px;">
+            </div>
+          </div>
+
+          <button class="vchr-save-btn" onclick="saveVoucherConfig()">💾 Guardar configuración</button>
+          <button onclick="deleteVoucherConfig()"
+            style="width:100%;padding:12px;background:#fff;color:#c0392b;border:1.5px solid #e74c3c;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;transition:opacity .15s;"
+            title="Elimina la config del servidor para que el voucher vuelva a sus valores originales del código">
+            🗑️ Restaurar valores originales del código
+          </button>
+          <div class="vchr-save-msg" id="voucherSaveMsg"></div>
+        </div>
+
+        <!-- PREVIEW -->
+        <div class="vchr-preview-wrap">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+            <div style="font-size:11px;font-weight:700;color:var(--text-gray);text-transform:uppercase;letter-spacing:.5px;">🔴 Live</div>
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+              <button id="vcBtnRegresar" onclick="vcUndo()" disabled
+                style="background:#f0ebf8;color:#680387;border:1.5px solid #c9a8e0;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:not-allowed;opacity:0.4;transition:opacity .2s;"
+                title="Deshacer último cambio">↩ Regresar</button>
+              <button onclick="vcReset()"
+                style="background:#fff8e1;color:#c66000;border:1.5px solid #ffcc80;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .2s;"
+                title="Resetear todo a la configuración original">⟳ Resetear</button>
+              <button onclick="openFullPreview()"
+                style="background:var(--purple);color:#fff;border:none;border-radius:8px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;">⛶ Pantalla completa</button>
+            </div>
+          </div>
+          <!-- Preview directo sin marco -->
+          <div style="width:281px;height:505px;overflow:hidden;border-radius:14px;box-shadow:0 8px 32px rgba(104,3,135,0.28);background:#680387;">
+            <!-- iframe de la app real — preview 100% idéntico al voucher -->
+            <!-- src se asigna dinámicamente al entrar al panel con la URL configurada -->
+            <iframe id="vcPreviewFrame"
+              src="about:blank"
+              style="width:390px;height:700px;border:none;display:block;transform:scale(0.72);transform-origin:top left;"
+              scrolling="no"
+              allow="scripts">
+            </iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const LS_ADMIN_KEY = 'yape_admin_key';
+  const LS_WORKER_URL = 'yape_worker_url';
+  const LS_APP_URL = 'yape_app_url';
+
+  function gateLogin() {
+    const key    = document.getElementById('gateInput').value.trim();
+    const url    = document.getElementById('workerUrlInput').value.trim().replace(/\/$/, '');
+    const appUrl = document.getElementById('appUrlInput').value.trim().replace(/\/$/, '');
+    const err    = document.getElementById('gateError');
+    if (!key || !url) { err.textContent = 'Completa al menos la clave y la URL del Worker.'; return; }
+    localStorage.setItem(LS_ADMIN_KEY,  key);
+    localStorage.setItem(LS_WORKER_URL, url);
+    if (appUrl) localStorage.setItem(LS_APP_URL, appUrl);
+    err.textContent = '';
+    enterPanel();
+  }
+
+  function enterPanel() {
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('panel').classList.add('visible');
+    document.getElementById('workerUrlLabel').textContent = localStorage.getItem(LS_WORKER_URL);
+
+    // Configurar el iframe del preview con la URL de la app
+    const appUrl  = localStorage.getItem(LS_APP_URL) || '';
+    const frame   = document.getElementById('vcPreviewFrame');
+    const frameFn = document.getElementById('vcFullPreviewFrame');
+    if (frame && appUrl) frame.src = appUrl + '?vcPreview=1';
+
+    loadUsers();
+  }
+
+  function adminHeaders() {
+    return { 'Content-Type': 'application/json', 'x-admin-key': localStorage.getItem(LS_ADMIN_KEY) };
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function fmtDateTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      ' - ' + d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function isOnline(iso) {
+    if (!iso) return false;
+    return (Date.now() - new Date(iso).getTime()) < 25000;
+  }
+
+  let allUsers = [];
+
+  function loadUsers() {
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    document.getElementById('loadingMsg').style.display = 'block';
+    document.getElementById('emptyMsg').style.display = 'none';
+
+    fetch(workerUrl + '/admin/users', { headers: adminHeaders() })
+      .then(res => {
+        if (res.status === 401) throw new Error('Clave de administrador incorrecta.');
+        if (!res.ok) throw new Error('Error del servidor (HTTP ' + res.status + ')');
+        return res.json();
+      })
+      .then(data => {
+        document.getElementById('loadingMsg').style.display = 'none';
+        allUsers = data.users || [];
+        const query = document.getElementById('searchIdInput').value;
+        if (query.trim()) {
+          filterUsersById(query);
+        } else {
+          renderUsers(allUsers);
+        }
+      })
+      .catch(err => {
+        document.getElementById('loadingMsg').style.display = 'none';
+        document.getElementById('gate').classList.remove('hidden');
+        document.getElementById('panel').classList.remove('visible');
+        document.getElementById('gateError').textContent = err.message;
+      });
+  }
+
+  function badgeLabel(u) {
+    return u.blocked ? 'Bloqueado' : (u.expired ? 'Vencido' : u.daysRemaining + ' día' + (u.daysRemaining === 1 ? '' : 's'));
+  }
+
+  const activityLoaded = {};
+  const activityGroupsCache = {};
+
+  function toggleActivity(id) {
+    const panel = document.getElementById('activity-' + id);
+    const btn = document.getElementById('activity-btn-' + id);
+    const isOpen = panel.style.display !== 'none';
+    if (isOpen) {
+      panel.style.display = 'none';
+      btn.textContent = 'Ver actividad';
+      return;
+    }
+    panel.style.display = 'block';
+    btn.textContent = 'Ocultar actividad';
+    loadActivity(id);
+  }
+
+  function monthLabel(d) {
+    const s = d.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function activityRowHtml(a) {
+    return `
+      <div class="activity-row">
+        <div class="activity-name">${escapeHtml(a.name)}</div>
+        <div class="activity-amount">S/ ${Number(a.amount || 0).toFixed(2)}</div>
+        <div class="activity-date">${fmtDateTime(a.created_at)}</div>
+      </div>
+    `;
+  }
+
+  function loadActivity(id) {
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    const panel = document.getElementById('activity-' + id);
+    panel.innerHTML = '<div class="pw-empty">Cargando actividad...</div>';
+    fetch(workerUrl + '/admin/activity?id=' + encodeURIComponent(id), { headers: adminHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) { panel.innerHTML = '<div class="pw-empty">Error: ' + data.error + '</div>'; return; }
+        const list = data.activity || [];
+        if (list.length === 0) { panel.innerHTML = '<div class="pw-empty">Aún no ha yapeado a nadie.</div>'; return; }
+
+        const groups = {};
+        list.forEach(a => {
+          const d = new Date(a.created_at);
+          const key = d.getFullYear() + '-' + String(d.getMonth()).padStart(2, '0');
+          if (!groups[key]) groups[key] = { label: monthLabel(d), entries: [], total: 0 };
+          groups[key].entries.push(a);
+          groups[key].total += Number(a.amount || 0);
+        });
+        activityGroupsCache[id] = groups;
+
+        const keys = Object.keys(groups).sort().reverse();
+        let html = '';
+        keys.forEach((key, idx) => {
+          const g = groups[key];
+          if (idx === 0) {
+            html += `<div class="activity-month-title">${escapeHtml(g.label)}</div>`;
+            html += g.entries.map(activityRowHtml).join('');
+            html += `<div class="activity-total">S/ ${g.total.toFixed(2)}</div>`;
+          } else {
+            html += `
+              <button class="activity-month-btn" onclick="toggleMonthDetail('${id}','${key}')" id="month-btn-${id}-${key}">
+                <span>${escapeHtml(g.label)}</span><span>S/ ${g.total.toFixed(2)}</span>
+              </button>
+              <div class="activity-month-detail" id="month-detail-${id}-${key}" style="display:none;"></div>
+            `;
+          }
+        });
+        panel.innerHTML = html;
+      })
+      .catch(() => { panel.innerHTML = '<div class="pw-empty">No se pudo cargar la actividad.</div>'; });
+  }
+
+  function toggleMonthDetail(id, key) {
+    const detail = document.getElementById('month-detail-' + id + '-' + key);
+    const isOpen = detail.style.display !== 'none';
+    if (isOpen) { detail.style.display = 'none'; return; }
+    const g = activityGroupsCache[id][key];
+    detail.innerHTML = g.entries.map(activityRowHtml).join('') +
+      `<div class="activity-total">S/ ${g.total.toFixed(2)}</div>`;
+    detail.style.display = 'block';
+  }
+
+  function userCardHtml(u, idxKey, showMove) {
+    return `
+      <div class="user-card ${(u.blocked || u.expired) ? 'blocked' : ''}" data-id="${u.id}">
+        <div class="user-top">
+          <div class="user-top-row" style="flex:1; min-width:0;">
+            <div style="flex:1; min-width:0;">
+              <input class="user-label-input" value="${(u.label || '').replace(/"/g, '&quot;')}" placeholder="Sin nombre" onblur="saveLabel('${u.id}', this.value)">
+              <div class="user-id">${escapeHtml(u.email || 'Sin correo')}</div>
+              <div class="user-password-row">
+                <span class="user-password-dots" id="pw-${u.id}">••••••••</span>
+                <button class="user-password-toggle" id="pw-btn-${u.id}" onclick="togglePasswordVisible('${u.id}')">Ver</button>
+              </div>
+            </div>
+            ${showMove ? `
+            <div class="move-menu-wrap">
+              <button class="move-dots-btn" onclick="toggleMoveMenu('${u.id}')">⋮</button>
+              <div class="move-menu" id="move-menu-${u.id}">
+                <div class="move-menu-label">Mover a</div>
+                <button class="${u.group === 'conocidos' ? 'current' : ''}" onclick="moveUser('${u.id}', 'conocidos')">Conocidos${u.group === 'conocidos' ? ' (actual)' : ''}</button>
+                <button class="${u.group === 'clientes' ? 'current' : ''}" onclick="moveUser('${u.id}', 'clientes')">Clientes${u.group === 'clientes' ? ' (actual)' : ''}</button>
+              </div>
+            </div>` : ''}
+          </div>
+          <span class="badge ${(u.blocked || u.expired) ? 'blocked' : 'active'}">${badgeLabel(u)}</span>
+        </div>
+        <div class="user-meta">
+          <span><span class="online-dot ${isOnline(u.lastSeen) ? 'on' : 'off'}"></span>${isOnline(u.lastSeen) ? 'En línea' : 'Desconectado'}</span>
+          <span>Primera vez: ${fmtDateTime(u.createdAt)}</span>
+          <span>Última vez: ${fmtDateTime(u.lastSeen)}</span>
+          <span>Vence: ${fmtDate(u.expiresAt)}</span>
+        </div>
+        <div class="user-actions">
+          <input type="number" class="btn-days-input" id="days-${idxKey}" value="7">
+          <button class="btn-add" onclick="grantDays('${u.id}', document.getElementById('days-${idxKey}').value)">Agregar días</button>
+          <button class="btn-add" onclick="grantDays('${u.id}', -document.getElementById('days-${idxKey}').value)">Quitar días</button>
+          <button class="btn-block" onclick="toggleBlock('${u.id}', ${!u.blocked})">${u.blocked ? 'Desbloquear' : 'Bloquear'}</button>
+          <button class="btn-remove" onclick="removeUser('${u.id}')">Eliminar</button>
+          <button class="btn-add" onclick="openSetPassword('${u.id}')">Cambiar contraseña</button>
+          <button class="btn-add" onclick="toggleActivity('${u.id}')" id="activity-btn-${u.id}">Ver actividad</button>
+        </div>
+        <div class="activity-panel" id="activity-${u.id}" style="display:none;"></div>
+      </div>
+    `;
+  }
+
+  const passwordCache = {};
+
+  function togglePasswordVisible(id) {
+    const dots = document.getElementById('pw-' + id);
+    const btn = document.getElementById('pw-btn-' + id);
+    if (btn.textContent === 'Ver') {
+      dots.textContent = passwordCache[id] || '(sin contraseña)';
+      btn.textContent = 'Ocultar';
+    } else {
+      dots.textContent = '••••••••';
+      btn.textContent = 'Ver';
+    }
+  }
+
+  function renderUsers(users) {
+    users.forEach(u => { passwordCache[u.id] = u.password || ''; });
+    document.getElementById('statTotal').textContent = allUsers.length;
+    document.getElementById('statActive').textContent = allUsers.filter(u => !u.blocked && !u.expired).length;
+    document.getElementById('statBlocked').textContent = allUsers.filter(u => u.blocked || u.expired).length;
+
+    const noResults = document.getElementById('noSearchResults');
+    const isSearching = document.getElementById('searchIdInput').value.trim().length > 0;
+    const sectionsWrap = document.getElementById('sectionsWrap');
+
+    if (allUsers.length === 0) {
+      document.getElementById('emptyMsg').style.display = 'block';
+      noResults.style.display = 'none';
+      sectionsWrap.innerHTML = '';
+      return;
+    }
+    document.getElementById('emptyMsg').style.display = 'none';
+
+    if (users.length === 0) {
+      noResults.style.display = isSearching ? 'block' : 'none';
+      sectionsWrap.innerHTML = '';
+      return;
+    }
+    noResults.style.display = 'none';
+
+    const vencidos = users.filter(u => u.blocked || u.expired);
+    const clientes = users.filter(u => !u.blocked && !u.expired && u.group === 'clientes');
+    const conocidos = users.filter(u => !u.blocked && !u.expired && u.group !== 'clientes');
+
+    const sections = [
+      { key: 'conocidos', title: 'Conocidos', list: conocidos, showMove: true },
+      { key: 'clientes', title: 'Clientes', list: clientes, showMove: true },
+      { key: 'vencidos', title: 'Vencidos', list: vencidos, showMove: false },
+    ];
+
+    sectionsWrap.innerHTML = sections.map(sec => `
+      <div class="section-block ${openSections.has(sec.key) ? 'open' : ''}" data-section="${sec.key}">
+        <div class="section-head" onclick="toggleSection('${sec.key}')">
+          <h3>${sec.title}</h3>
+          <span class="section-count">${sec.list.length}</span>
+          <span class="section-arrow">▶</span>
+        </div>
+        <div class="section-body">
+          ${sec.list.length === 0
+            ? `<div class="section-empty">No hay usuarios aquí.</div>`
+            : `<div class="section-users">${sec.list.map((u, i) => userCardHtml(u, sec.key + '-' + i, sec.showMove)).join('')}</div>`
+          }
+        </div>
+      </div>
+    `).join('');
+  }
+
+  let openSections = new Set();
+  function toggleSection(key) {
+    const block = document.querySelector('.section-block[data-section="' + key + '"]');
+    if (!block) return;
+    if (openSections.has(key)) {
+      openSections.delete(key);
+      block.classList.remove('open');
+    } else {
+      openSections.add(key);
+      block.classList.add('open');
+    }
+  }
+
+  function toggleMoveMenu(id) {
+    const menu = document.getElementById('move-menu-' + id);
+    const isOpen = menu.classList.contains('open');
+    document.querySelectorAll('.move-menu.open').forEach(m => m.classList.remove('open'));
+    if (!isOpen) menu.classList.add('open');
+  }
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.move-menu-wrap')) {
+      document.querySelectorAll('.move-menu.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+
+  function moveUser(id, group) {
+    document.querySelectorAll('.move-menu.open').forEach(m => m.classList.remove('open'));
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    fetch(workerUrl + '/admin/grant', {
+      method: 'POST', headers: adminHeaders(),
+      body: JSON.stringify({ id, days: 0, group })
+    }).then(res => res.json()).then(() => loadUsers())
+      .catch(() => alert('No se pudo mover. Intenta de nuevo.'));
+  }
+
+  function filterUsersById(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      renderUsers(allUsers);
+      return;
+    }
+    const filtered = allUsers.filter(u => u.id.toLowerCase().includes(q) || (u.label || '').toLowerCase().includes(q));
+    renderUsers(filtered);
+  }
+
+  function grantDays(id, days) {
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    fetch(workerUrl + '/admin/grant', {
+      method: 'POST', headers: adminHeaders(),
+      body: JSON.stringify({ id, days: Number(days) })
+    }).then(res => res.json()).then(() => loadUsers())
+      .catch(() => alert('No se pudo actualizar. Intenta de nuevo.'));
+  }
+
+  function saveLabel(id, label) {
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    fetch(workerUrl + '/admin/grant', {
+      method: 'POST', headers: adminHeaders(),
+      body: JSON.stringify({ id, days: 0, label })
+    }).catch(() => {});
+  }
+
+  function toggleBlock(id, blocked) {
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    fetch(workerUrl + '/admin/block', {
+      method: 'POST', headers: adminHeaders(),
+      body: JSON.stringify({ id, blocked })
+    }).then(res => res.json()).then(data => {
+        if (data.error) { alert('Error: ' + data.error + '. Revisa que el Worker desplegado en Cloudflare sea la versión más reciente (con soporte para /admin/block).'); return; }
+        loadUsers();
+      })
+      .catch(() => alert('No se pudo actualizar. Intenta de nuevo.'));
+  }
+
+  function toggleSetPassVisible() {
+    const inp = document.getElementById('setPassInput');
+    const icon = document.getElementById('setPassEyeIcon');
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';
+    } else {
+      inp.type = 'password';
+      icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+    }
+  }
+
+  function removeUser(id) {
+    if (!confirm('¿Eliminar este usuario? Ya no se podrá volver a conectar sin que la app lo registre otra vez con días de prueba.')) return;
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    fetch(workerUrl + '/admin/remove', {
+      method: 'POST', headers: adminHeaders(),
+      body: JSON.stringify({ id })
+    }).then(() => loadUsers())
+      .catch(() => alert('No se pudo eliminar. Intenta de nuevo.'));
+  }
+
+  let _setPassUserId = null;
+  function openSetPassword(id) {
+    _setPassUserId = id;
+    document.getElementById('setPassInput').value = '';
+    document.getElementById('setPassError').textContent = '';
+    document.getElementById('setPassModal').style.display = 'flex';
+  }
+  function closeSetPassword() {
+    document.getElementById('setPassModal').style.display = 'none';
+    _setPassUserId = null;
+  }
+  function confirmSetPassword() {
+    const newPass = document.getElementById('setPassInput').value.trim();
+    if (newPass.length < 8) {
+      document.getElementById('setPassError').textContent = 'Mínimo 8 caracteres.';
+      return;
+    }
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    fetch(workerUrl + '/admin/set-password', {
+      method: 'POST', headers: adminHeaders(),
+      body: JSON.stringify({ id: _setPassUserId, password: newPass })
+    }).then(r => r.json()).then(data => {
+      if (data.ok) { closeSetPassword(); loadUsers(); alert('Contraseña actualizada ✓'); }
+      else { document.getElementById('setPassError').textContent = data.error || 'Error al actualizar.'; }
+    }).catch(() => { document.getElementById('setPassError').textContent = 'No se pudo conectar.'; });
+  }
+
+  // Pre-rellenar inputs del gate con valores guardados
+  const _savedWorker = localStorage.getItem(LS_WORKER_URL);
+  const _savedApp    = localStorage.getItem(LS_APP_URL);
+  if (_savedWorker) { const el = document.getElementById('workerUrlInput'); if(el) el.value = _savedWorker; }
+  if (_savedApp)    { const el = document.getElementById('appUrlInput');    if(el) el.value = _savedApp; }
+
+  // Auto-login si ya se guardó la clave antes
+  if (localStorage.getItem(LS_ADMIN_KEY) && localStorage.getItem(LS_WORKER_URL)) {
+    enterPanel();
+  }
+
+  let yapRecordsVisible = false;
+  function toggleYapRecords() {
+    yapRecordsVisible = !yapRecordsVisible;
+    document.getElementById('yapRecordsSection').style.display = yapRecordsVisible ? 'block' : 'none';
+    document.getElementById('toggleYapBtn').textContent = yapRecordsVisible ? 'Ocultar registros' : 'Ver registros';
+    if (yapRecordsVisible) loadYapRecords();
+  }
+
+  function escapeHtml(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function loadYapRecords() {
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    const list = document.getElementById('yapRecordsList');
+    list.innerHTML = '<div class="pw-empty">Cargando...</div>';
+    fetch(workerUrl + '/admin/yapeados', { headers: adminHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) { list.innerHTML = '<div class="pw-empty">Error: ' + data.error + '</div>'; return; }
+        renderYapRecords(data.yapeados || []);
+      })
+      .catch(() => { list.innerHTML = '<div class="pw-empty">No se pudo cargar.</div>'; });
+  }
+
+  let yapSearchTimeout = null;
+  function searchYapRecords(query) {
+    if (yapSearchTimeout) clearTimeout(yapSearchTimeout);
+    yapSearchTimeout = setTimeout(() => {
+      const workerUrl = localStorage.getItem(LS_WORKER_URL);
+      const list = document.getElementById('yapRecordsList');
+      list.innerHTML = '<div class="pw-empty">Buscando...</div>';
+      fetch(workerUrl + '/admin/yapeados/search?q=' + encodeURIComponent(query.trim()), { headers: adminHeaders() })
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) { list.innerHTML = '<div class="pw-empty">Error: ' + data.error + '</div>'; return; }
+          renderYapRecords(data.yapeados || []);
+        })
+        .catch(() => { list.innerHTML = '<div class="pw-empty">No se pudo buscar.</div>'; });
+    }, 300);
+  }
+
+  function renderYapRecords(records) {
+    const list = document.getElementById('yapRecordsList');
+    if (records.length === 0) { list.innerHTML = '<div class="pw-empty">No hay registros.</div>'; return; }
+    list.innerHTML = records.map(r => `
+      <div class="yap-row" data-rowid="${r.rowid}">
+        <div class="yap-view">
+          <div class="yap-info">
+            <div class="yap-name">${escapeHtml(r.name)}</div>
+            <div class="yap-phone">${escapeHtml(r.phone)}</div>
+          </div>
+          <button class="btn-add" onclick="editYapRow(${r.rowid})">Editar</button>
+        </div>
+        <div class="yap-edit" style="display:none;">
+          <input type="text" class="yap-edit-name" value="${(r.name || '').replace(/"/g, '&quot;')}" placeholder="Nombre">
+          <input type="text" class="yap-edit-phone" value="${escapeHtml(r.phone)}" placeholder="Número">
+          <div class="yap-edit-actions">
+            <button class="btn-add" onclick="saveYapRow(${r.rowid})">Guardar</button>
+            <button class="btn-block" onclick="cancelYapRow(${r.rowid})">Cancelar</button>
+            <button class="btn-remove" onclick="deleteYapRow(${r.rowid})">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function yapRowEl(rowid) {
+    return document.querySelector('.yap-row[data-rowid="' + rowid + '"]');
+  }
+
+  function editYapRow(rowid) {
+    const row = yapRowEl(rowid);
+    row.querySelector('.yap-view').style.display = 'none';
+    row.querySelector('.yap-edit').style.display = 'flex';
+  }
+
+  function cancelYapRow(rowid) {
+    const row = yapRowEl(rowid);
+    row.querySelector('.yap-view').style.display = 'flex';
+    row.querySelector('.yap-edit').style.display = 'none';
+  }
+
+  function saveYapRow(rowid) {
+    const row = yapRowEl(rowid);
+    const name = row.querySelector('.yap-edit-name').value.trim();
+    const phone = row.querySelector('.yap-edit-phone').value.trim();
+    if (!name || !phone) { alert('Completa nombre y número.'); return; }
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    fetch(workerUrl + '/admin/yapeados/edit', {
+      method: 'POST', headers: adminHeaders(),
+      body: JSON.stringify({ rowid, phone, name })
+    }).then(res => res.json()).then(data => {
+        if (data.error) { alert('Error: ' + data.error); return; }
+        loadYapRecords();
+      })
+      .catch(() => alert('No se pudo guardar. Intenta de nuevo.'));
+  }
+
+  function deleteYapRow(rowid) {
+    if (!confirm('¿Eliminar este registro?')) return;
+    const workerUrl = localStorage.getItem(LS_WORKER_URL);
+    fetch(workerUrl + '/admin/yapeados/delete', {
+      method: 'POST', headers: adminHeaders(),
+      body: JSON.stringify({ rowid })
+    }).then(() => loadYapRecords())
+      .catch(() => alert('No se pudo eliminar. Intenta de nuevo.'));
+  }
+
+  // ============================================================
+  // TABS
+  // ============================================================
+  function switchTab(tab) {
+    document.querySelectorAll('.admin-tab').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='users')||(i===1&&tab==='voucher')));
+    document.getElementById('usersSection').style.display = tab === 'users' ? 'block' : 'none';
+    document.getElementById('voucherSection').style.display = tab === 'voucher' ? 'block' : 'none';
+    document.getElementById('panelTitle').textContent = tab === 'users' ? 'Usuarios de la app' : 'Editor de Voucher';
+    document.getElementById('refreshBtn').style.display = tab === 'users' ? '' : 'none';
+    document.getElementById('toggleYapBtn').style.display = tab === 'users' ? '' : 'none';
+    if (tab === 'voucher') loadVoucherConfig();
+  }
+
+  // ============================================================
+  // VOUCHER EDITOR
+  // ============================================================
+  const VC_DEFAULTS = {
+    logoGif: 'https://i.ibb.co/PsjqP3kY/Animation-Yape.gif',
+    staticLogo: 'https://i.ibb.co/8D6rbBs1/Logo-de-Yape.png',
+    headerAd: 'https://i.ibb.co/LhsmyYnG/anuncio-arriva-yape.jpg',
+    promoImg: 'https://res.cloudinary.com/dm0fujtre/image/upload/v1781709215/resources/publicity/l0mdm0psw5bi8yhfxqzk.webp',
+    dividerHeight: 1, dividerColor: '#E4E1EA', dividerMargin: 12,
+    // Tamaños — valores que produce el CSS clamp() a 390px de viewport
+    amountSize: 53, currencySize: 31, receiverSize: 22, dataSize: 13,
+    secLabelSize: 10, chipSize: 16,
+    headerHeight: 160, logoSize: 70,
+    closeSize: 46, cardMargin: 6, cardRadius: 18,
+    promoMarginTop: 10,
+    bgColor: '#680387', closeColor: '#8B3C99', amountColor: '#2C2044',
+    closeTop: 12, closeRight: 12,
+    logoTop: 20, logoLeft: 20,
+    chipGap: 5, secRowPadding: 0,
+    chipColor: '#EEECF3', chipRadius: 4,
+    cardPaddingH: 22, cardPaddingTop: 24, cardPaddingBottom: 20,
+    headerAdTop: 52
+  };
+
+  function vcGet(id) { return document.getElementById('vc-' + id); }
+  function pvGet(id) { return document.getElementById('pv-' + id); }
+
+  function syncColor(key) {
+    const txt = vcGet(key + 'Text').value;
+    if (/^#[0-9a-fA-F]{6}$/.test(txt)) vcGet(key).value = txt;
+    pvUpdate();
+  }
+
+  // Ajuste fino ±1 con los botones − y +
+  function adjustVal(key, delta) {
+    vcSaveHistory();
+    const el = vcGet(key);
+    if (!el) return;
+    const min = el.min !== '' ? Number(el.min) : -9999;
+    const max = el.max !== '' ? Number(el.max) :  9999;
+    el.value = Math.min(max, Math.max(min, Number(el.value) + delta));
+    pvUpdate();
+  }
+
+  function pvUpdate() {
+    const v = getVcValues();
+
+    // Sincronizar color pickers con texto
+    ['bgColor','closeColor','amountColor','dividerColor'].forEach(k => {
+      const col = vcGet(k); const txt = vcGet(k + 'Text');
+      if (col && txt && col.value !== txt.value) txt.value = col.value;
+    });
+
+    // Actualizar etiquetas de valores en los rangos
+    const ranges = ['dividerHeight','dividerMargin','amountSize','currencySize','receiverSize','dataSize','secLabelSize','chipSize','headerHeight','logoSize','closeSize','cardMargin','cardRadius','promoMarginTop','closeTop','closeRight','logoTop','logoLeft','chipGap','secRowPadding','cardPaddingH','cardPaddingTop','cardPaddingBottom','headerAdTop'];
+    ranges.forEach(k => {
+      const el = document.getElementById('vc-' + k + '-val');
+      if (el) el.textContent = v[k] + 'px';
+    });
+
+    // *** Solo enviar valores que difieran de VC_DEFAULTS ***
+    // → el preview muestra los defaults del código + solo lo que el usuario cambió
+    // → los valores del DB que no fueron tocados NO afectan el preview
+    const delta = {};
+    Object.keys(v).forEach(k => {
+      if (v[k] !== VC_DEFAULTS[k]) delta[k] = v[k];
+    });
+
+    const frame = document.getElementById('vcPreviewFrame');
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'vcPreviewUpdate', config: delta }, '*');
+    }
+  }
+
+  function getVcValues() {
+    const g = (id, def) => { const el = vcGet(id); return el ? (el.type === 'range' ? Number(el.value) : el.value) : def; };
+    return {
+      logoGif: g('logoGif', VC_DEFAULTS.logoGif),
+      staticLogo: g('staticLogo', VC_DEFAULTS.staticLogo),
+      headerAd: g('headerAd', VC_DEFAULTS.headerAd),
+      promoImg: g('promoImg', VC_DEFAULTS.promoImg),
+      dividerHeight: g('dividerHeight', 1), dividerColor: g('dividerColor', '#E4E1EA'),
+      dividerMargin: g('dividerMargin', 14),
+      amountSize: g('amountSize', 72), currencySize: g('currencySize', 34),
+      receiverSize: g('receiverSize', 18), dataSize: g('dataSize', 13),
+      secLabelSize: g('secLabelSize', 12), chipSize: g('chipSize', 22),
+      headerHeight: g('headerHeight', 160), logoSize: g('logoSize', 54),
+      closeSize: g('closeSize', 48), cardMargin: g('cardMargin', 10),
+      cardRadius: g('cardRadius', 20), promoMarginTop: g('promoMarginTop', 10),
+      bgColor: g('bgColor', '#680387'), closeColor: g('closeColor', '#8B3C99'),
+      amountColor: g('amountColor', '#2C2044'),
+      closeTop: g('closeTop', 12), closeRight: g('closeRight', 12),
+      logoTop: g('logoTop', 20), logoLeft: g('logoLeft', 20),
+      chipGap: g('chipGap', 5), secRowPadding: g('secRowPadding', 0),
+      chipColor: g('chipColor', '#EEECF3'), chipRadius: g('chipRadius', 4),
+      cardPaddingH: g('cardPaddingH', 22), cardPaddingTop: g('cardPaddingTop', 24),
+      cardPaddingBottom: g('cardPaddingBottom', 20), headerAdTop: g('headerAdTop', 52)
+    };
+  }
+
+  function applyConfigToControls(cfg) {
+    const c = Object.assign({}, VC_DEFAULTS, cfg);
+    const set = (id, val) => { const el = vcGet(id); if (el) el.value = val; };
+    set('logoGif', c.logoGif); set('staticLogo', c.staticLogo);
+    set('headerAd', c.headerAd); set('promoImg', c.promoImg);
+    set('dividerHeight', c.dividerHeight); set('dividerColor', c.dividerColor);
+    set('dividerColorText', c.dividerColor); set('dividerMargin', c.dividerMargin);
+    set('amountSize', c.amountSize); set('currencySize', c.currencySize);
+    set('receiverSize', c.receiverSize); set('dataSize', c.dataSize);
+    set('secLabelSize', c.secLabelSize); set('chipSize', c.chipSize);
+    set('headerHeight', c.headerHeight); set('logoSize', c.logoSize);
+    set('closeSize', c.closeSize); set('cardMargin', c.cardMargin);
+    set('cardRadius', c.cardRadius); set('promoMarginTop', c.promoMarginTop);
+    set('bgColor', c.bgColor); set('bgColorText', c.bgColor);
+    set('closeColor', c.closeColor); set('closeColorText', c.closeColor);
+    set('amountColor', c.amountColor); set('amountColorText', c.amountColor);
+    set('closeTop', c.closeTop); set('closeRight', c.closeRight);
+    set('logoTop', c.logoTop); set('logoLeft', c.logoLeft);
+    set('chipGap', c.chipGap); set('secRowPadding', c.secRowPadding);
+    set('chipColor', c.chipColor); set('chipRadius', c.chipRadius);
+    set('cardPaddingH', c.cardPaddingH); set('cardPaddingTop', c.cardPaddingTop);
+    set('cardPaddingBottom', c.cardPaddingBottom); set('headerAdTop', c.headerAdTop);
+    pvUpdate();
+  }
+
+  function loadVoucherConfig() {
+    const workerUrl = localStorage.getItem('yape_worker_url');
+    const adminKey = localStorage.getItem('yape_admin_key');
+    fetch(workerUrl + '/admin/voucher-config', {
+      headers: { 'x-admin-key': adminKey }
+    }).then(r => r.json()).then(d => {
+      applyConfigToControls(d.config || {});
+    }).catch(() => applyConfigToControls({}));
+  }
+
+  function saveVoucherConfig() {
+    const workerUrl = localStorage.getItem('yape_worker_url');
+    const adminKey = localStorage.getItem('yape_admin_key');
+    // Solo guardar valores que difieran de VC_DEFAULTS
+    // → la app aplica solo overrides reales; el CSS clamp() maneja el resto
+    const v = getVcValues();
+    const delta = {};
+    Object.keys(v).forEach(k => { if (v[k] !== VC_DEFAULTS[k]) delta[k] = v[k]; });
+    const msg = document.getElementById('voucherSaveMsg');
+    msg.textContent = 'Guardando...';
+    fetch(workerUrl + '/admin/voucher-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      body: JSON.stringify(delta)
+    }).then(r => r.json()).then(d => {
+      msg.textContent = d.ok ? '✓ Guardado correctamente' : '✗ Error: ' + (d.error || '');
+      setTimeout(() => msg.textContent = '', 3000);
+    }).catch(() => {
+      msg.textContent = '✗ No se pudo guardar';
+      setTimeout(() => msg.textContent = '', 3000);
+    });
+  }
+
+  function deleteVoucherConfig() {
+    if (!confirm(
+      '¿Restaurar valores originales?\n\n' +
+      'El voucher volverá a verse exactamente como está en el código del index.html.\n\n' +
+      '⚠️ Esta acción no se puede deshacer.'
+    )) return;
+
+    const workerUrl = localStorage.getItem('yape_worker_url');
+    const adminKey  = localStorage.getItem('yape_admin_key');
+    const msg = document.getElementById('voucherSaveMsg');
+    msg.textContent = 'Restaurando...';
+
+    // Guardamos un objeto vacío {} en el servidor.
+    // El index.html al recibir {} no aplica ningún override
+    // y usa sus valores hardcodeados — mismo efecto que borrar la config.
+    fetch(workerUrl + '/admin/voucher-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        msg.textContent = '✓ Restaurado. El voucher ahora usa los valores originales del código.';
+        applyConfigToControls({});
+        _vcHistory.length = 0;
+        _vcRefreshUndoBtn();
+      } else {
+        msg.textContent = '✗ Error: ' + (d.error || 'No se pudo restaurar');
+      }
+      setTimeout(() => msg.textContent = '', 4000);
+    })
+    .catch(() => {
+      msg.textContent = '✗ Error de conexión';
+      setTimeout(() => msg.textContent = '', 4000);
+    });
+  }
+
+  // ================================================================
+  // HISTORIAL — Regresar y Resetear
+  // ================================================================
+  const _vcHistory = [];
+  const VC_HISTORY_MAX = 50;
+
+  /** Guarda el estado actual en el historial (si cambió respecto al último). */
+  function vcSaveHistory() {
+    const state = getVcValues();
+    const last = _vcHistory[_vcHistory.length - 1];
+    if (!last || JSON.stringify(state) !== JSON.stringify(last)) {
+      _vcHistory.push(JSON.parse(JSON.stringify(state)));
+      if (_vcHistory.length > VC_HISTORY_MAX) _vcHistory.shift();
+    }
+    _vcRefreshUndoBtn();
+  }
+
+  /** Deshace el último cambio (Regresar). */
+  function vcUndo() {
+    if (_vcHistory.length === 0) return;
+    const prev = _vcHistory.pop();
+    applyConfigToControls(prev);
+    _vcRefreshUndoBtn();
+  }
+
+  /** Resetea el voucher a su configuración original (VC_DEFAULTS). */
+  function vcReset() {
+    if (!confirm('¿Resetear el voucher a su configuración original?\nEsto no borra lo guardado en el servidor, solo los cambios actuales en pantalla.')) return;
+    vcSaveHistory();           // guarda el estado actual para poder volver con Regresar
+    applyConfigToControls({}); // aplica los defaults
+    _vcRefreshUndoBtn();
+  }
+
+  /** Actualiza visualmente el botón Regresar según el historial. */
+  function _vcRefreshUndoBtn() {
+    const btn = document.getElementById('vcBtnRegresar');
+    if (!btn) return;
+    const hasHistory = _vcHistory.length > 0;
+    btn.disabled = !hasHistory;
+    btn.style.opacity = hasHistory ? '1' : '0.4';
+    btn.style.cursor  = hasHistory ? 'pointer' : 'not-allowed';
+    btn.title = hasHistory
+      ? `Regresar (${_vcHistory.length} paso${_vcHistory.length > 1 ? 's' : ''} atrás disponible${_vcHistory.length > 1 ? 's' : ''})`
+      : 'Sin cambios para deshacer';
+  }
+
+  // Capturar estado ANTES de que el usuario modifique cualquier control
+  document.addEventListener('DOMContentLoaded', function () {
+    const controls = document.querySelector('.vchr-controls');
+    if (controls) {
+      controls.addEventListener('mousedown', vcSaveHistory);
+      controls.addEventListener('touchstart', vcSaveHistory, { passive: true });
+      controls.addEventListener('focus', vcSaveHistory, true);
+    }
+
+    // Cuando el iframe carga: enviar config vacía para que muestre los defaults puros del HTML
+    // (no la config del servidor). El preview solo cambia cuando el usuario mueve algo.
+    const frame = document.getElementById('vcPreviewFrame');
+    if (frame) {
+      frame.addEventListener('load', function() {
+        setTimeout(function() {
+          if (frame.contentWindow)
+            frame.contentWindow.postMessage({ type: 'vcPreviewUpdate', config: {} }, '*');
+        }, 150);
+      });
+    }
+    // vcPreviewReady: misma lógica — config vacía = defaults del HTML
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'vcPreviewReady') {
+        const fr = document.getElementById('vcPreviewFrame');
+        if (fr && fr.contentWindow)
+          fr.contentWindow.postMessage({ type: 'vcPreviewUpdate', config: {} }, '*');
+      }
+    });
+  });
+</script>
+<!-- Modal: Cambiar contraseña -->
+<div id="setPassModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:340px;padding:24px 20px 18px;">
+    <h3 style="margin:0 0 14px;font-size:16px;color:#1a1a2e;">Cambiar contraseña</h3>
+    <div style="position:relative;">
+      <input type="password" id="setPassInput" placeholder="Nueva contraseña (mín. 8 caracteres)"
+        style="width:100%;box-sizing:border-box;border:1.5px solid #ddd;border-radius:8px;padding:10px 40px 10px 12px;font-size:14px;margin-bottom:8px;outline:none;">
+      <button onclick="toggleSetPassVisible()" id="setPassEye"
+        style="position:absolute;right:10px;top:10px;background:none;border:none;cursor:pointer;padding:0;color:#888;line-height:1;">
+        <svg id="setPassEyeIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </div>
+    <p id="setPassError" style="color:#e53e3e;font-size:13px;margin:0 0 14px;min-height:18px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeSetPassword()" style="flex:1;padding:10px;border:1.5px solid #ddd;border-radius:8px;background:#fff;font-size:14px;cursor:pointer;">Cancelar</button>
+      <button onclick="confirmSetPassword()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#6B21A8;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Guardar</button>
+    </div>
+  </div>
+</div>
+<!-- Modal: Vista previa pantalla completa -->
+<div id="fullPreviewModal" style="display:none;position:fixed;inset:0;z-index:9998;background:#0d0d0d;align-items:flex-start;justify-content:center;overflow-y:auto;">
+  <button onclick="closeFullPreview()" style="position:fixed;top:14px;right:14px;z-index:9999;background:rgba(0,0,0,0.7);border:none;border-radius:50%;width:38px;height:38px;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
+  <div id="fullPreviewContent" style="width:390px;flex-shrink:0;"></div>
+</div>
+
+<script>
+  function openFullPreview() {
+    const dest = document.getElementById('fullPreviewContent');
+    dest.innerHTML = '';
+    // iframe del index.html real a tamaño completo (390px) — idéntico al teléfono real
+    const fr = document.createElement('iframe');
+    fr.id  = 'vcFullPreviewFrame';
+    const appUrl = localStorage.getItem(LS_APP_URL) || '';
+    fr.src = appUrl ? appUrl + '?vcPreview=1' : 'about:blank';
+    fr.style.cssText = 'width:390px;height:100vh;border:none;display:block;';
+    fr.setAttribute('scrolling', 'no');
+    fr.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    // Cuando cargue, enviar el mismo delta que tiene el preview pequeño
+    fr.addEventListener('load', function() {
+      const v = getVcValues();
+      const delta = {};
+      Object.keys(v).forEach(k => { if (v[k] !== VC_DEFAULTS[k]) delta[k] = v[k]; });
+      fr.contentWindow.postMessage({ type: 'vcPreviewUpdate', config: delta }, '*');
+    });
+    dest.appendChild(fr);
+    const modal = document.getElementById('fullPreviewModal');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeFullPreview() {
+    document.getElementById('fullPreviewModal').style.display = 'none';
+    document.getElementById('fullPreviewContent').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  // Cerrar con Escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullPreview(); });
+  // Cerrar al tocar el fondo
+  document.getElementById('fullPreviewModal').addEventListener('click', function(e) {
+    if (e.target === this) closeFullPreview();
+  });
+</script>
+</body>
+</html>
