@@ -49,8 +49,7 @@
   /* ---------- Pantalla (mobile-first, proporción fija) ---------- */
   .screen {
     position: relative;
-    container-type: inline-size;
-    width: min(100vw, calc(100vh * var(--ratio)));
+    width: 100vw;
     height: 100vh;
     overflow: hidden;
     color: var(--white);
@@ -61,7 +60,22 @@
     -webkit-user-select: none;
   }
   @supports (height: 100dvh) {
-    .screen { height: 100dvh; width: min(100vw, calc(100dvh * var(--ratio))); }
+    .screen { height: 100dvh; }
+  }
+
+  /* Capa de interfaz: conserva las proporciones del diseño, centrada sobre la cámara a pantalla completa */
+  .ui {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(100vw, calc(100vh * var(--ratio)));
+    container-type: inline-size;
+    z-index: 1;
+  }
+  @supports (height: 100dvh) {
+    .ui { width: min(100vw, calc(100dvh * var(--ratio))); }
   }
 
   /* Textura sutil de la superficie */
@@ -179,6 +193,8 @@
   .close   { z-index: 3; }
 
   .hint {
+    position: relative;
+    z-index: 1;
     margin-top: 3.3cqw;
     width: 48cqw;
     text-align: center;
@@ -210,7 +226,7 @@
     color: var(--text-muted);
     font-family: inherit;
     font-weight: 400;
-    font-size: 3.75cqw;
+    font-size: 4.6cqw;
     display: flex;
     align-items: center;
     padding-left: 6.8cqw;
@@ -221,13 +237,15 @@
     transition: transform .18s ease, filter .18s ease;
   }
   .upload:active { transform: scale(.985); filter: brightness(.96); }
-  .upload svg { width: 5.4cqw; height: 5.4cqw; flex: none; display: block; }
+  .upload svg { width: 6.8cqw; height: 6.8cqw; flex: none; display: block; }
   .upload span { white-space: nowrap; }
 </style>
 </head>
 <body>
   <main class="screen" id="screen">
     <video class="camera" id="camera" autoplay playsinline muted></video>
+
+    <div class="ui">
 
     <button class="close" type="button" aria-label="Cerrar">
       <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
@@ -253,6 +271,7 @@
         <span>Subir una imagen con QR</span>
       </button>
     </section>
+    </div>
   </main>
 
   <script>
@@ -265,7 +284,6 @@
         if (window.CSS && CSS.supports && CSS.supports('height', '100dvh')) return;
         var h = window.innerHeight;
         screenEl.style.height = h + 'px';
-        screenEl.style.width = Math.min(window.innerWidth, h * 1251 / 2576) + 'px';
       }
       fitHeight();
       window.addEventListener('resize', fitHeight);
