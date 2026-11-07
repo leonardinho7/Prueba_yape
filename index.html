@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5e555a">
+<title>Escanear código QR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /*
+    Referencia de diseño: 1251 x 2576 px.
+    Todas las medidas usan "cqw" (1cqw = 1% del ancho de la pantalla),
+    de modo que la interfaz escala de forma uniforme en cualquier dispositivo.
+    Equivalencia: 1px de la referencia = 0.07994cqw.
+  */
+  :root {
+    --ratio: calc(1251 / 2576);
+    --bg-top: #6d656a;
+    --bg-mid: #5f565b;
+    --bg-bottom: #4e4347;
+    --frame: #cdbfce;
+    --white: #ffffff;
+    --purple: #71058F;
+    --btn-light: #f4eaef;
+    --text-muted: #7b717a;
+    --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n' x='0' y='0'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: #2c2629;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Roboto", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  /* ---------- Pantalla (mobile-first, proporción fija) ---------- */
+  .screen {
+    position: relative;
+    container-type: inline-size;
+    width: min(100vw, calc(100vh * var(--ratio)));
+    height: 100vh;
+    overflow: hidden;
+    color: var(--white);
+    background:
+      radial-gradient(ellipse 85% 38% at 50% 36%, rgba(130, 120, 127, 0.55), transparent 70%),
+      linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 45%, var(--bg-bottom) 100%);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  @supports (height: 100dvh) {
+    .screen { height: 100dvh; width: min(100vw, calc(100dvh * var(--ratio))); }
+  }
+
+  /* Textura sutil de la superficie */
+  .screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--noise);
+    background-size: 38cqw 38cqw;
+    opacity: 0.10;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  /* ---------- Botón cerrar ---------- */
+  .close {
+    position: absolute;
+    top: 2.8cqw;
+    right: 2.9cqw;
+    width: 9.3cqw;
+    height: 9.3cqw;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(66, 60, 64, 0.72);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: transform .18s ease, background-color .18s ease;
+  }
+  .close svg { width: 4cqw; height: 4cqw; display: block; }
+  .close:active { transform: scale(.92); background: rgba(66, 60, 64, 0.9); }
+
+  /* ---------- Visor + texto ---------- */
+  .scanner {
+    position: absolute;
+    top: 23.21%;
+    left: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .viewfinder {
+    position: relative;
+    width: 53.8cqw;
+    aspect-ratio: 1 / 1;
+    border-radius: 1.8cqw;
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 48%, rgba(228, 200, 232, 0.35) 51%, rgba(0,0,0,0) 54%, rgba(0,0,0,0) 100%),
+      linear-gradient(160deg, #d0c3d1 0%, #cbbecc 55%, #c8bbca 100%);
+    box-shadow: 0 0 4cqw rgba(0, 0, 0, 0.12);
+  }
+  .viewfinder::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--noise);
+    background-size: 22cqw 22cqw;
+    opacity: 0.32;
+    mix-blend-mode: multiply;
+  }
+  .viewfinder::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      -58deg,
+      rgba(255,255,255,0.10) 0 0.5cqw,
+      rgba(120,105,120,0.07) 0.5cqw 1.1cqw
+    );
+    filter: blur(0.15cqw);
+  }
+
+  /* Línea fina morada de pared a pared, en el centro del recuadro */
+  .scan-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 0.2cqw;
+    min-height: 1px;
+    transform: translateY(-50%);
+    background: #71058F;
+    opacity: 1;
+    z-index: 2;
+  }
+
+  /* Cámara a pantalla completa */
+  .camera {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+    opacity: 0;
+    transition: opacity .3s ease;
+    z-index: 0;
+  }
+  .screen.is-live .camera { opacity: 1; }
+  .screen.is-live::before { display: none; }
+
+  /* Con la cámara activa: recuadro claro y alrededor oscuro */
+  .screen.is-live .viewfinder {
+    background: transparent;
+    box-shadow: 0 0 0 150vmax rgba(0, 0, 0, 0.58);
+  }
+  .screen.is-live .viewfinder::before,
+  .screen.is-live .viewfinder::after { display: none; }
+
+  .scanner { z-index: 1; }
+  .bottom  { z-index: 2; }
+  .close   { z-index: 3; }
+
+  .hint {
+    margin-top: 3.3cqw;
+    width: 48cqw;
+    text-align: center;
+    font-weight: 700;
+    font-size: 3.5cqw;
+    line-height: 4.64cqw;
+    letter-spacing: 0.005em;
+    color: var(--white);
+  }
+
+  /* ---------- Controles inferiores ---------- */
+  .bottom {
+    position: absolute;
+    left: 0;
+    bottom: 4.5cqw;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4.2cqw;
+  }
+
+  .upload {
+    width: 91.85cqw;
+    height: 19.2cqw;
+    border: 0;
+    border-radius: 2.4cqw;
+    background: var(--btn-light);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-weight: 400;
+    font-size: 3.75cqw;
+    display: flex;
+    align-items: center;
+    padding-left: 6.8cqw;
+    gap: 4.6cqw;
+    cursor: pointer;
+    text-align: left;
+    box-shadow: 0 0.4cqw 1.6cqw rgba(0,0,0,0.12);
+    transition: transform .18s ease, filter .18s ease;
+  }
+  .upload:active { transform: scale(.985); filter: brightness(.96); }
+  .upload svg { width: 5.4cqw; height: 5.4cqw; flex: none; display: block; }
+  .upload span { white-space: nowrap; }
+</style>
+</head>
+<body>
+  <main class="screen" id="screen">
+    <video class="camera" id="camera" autoplay playsinline muted></video>
+
+    <button class="close" type="button" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+        <path d="M4.5 4.5l15 15M19.5 4.5l-15 15"/>
+      </svg>
+    </button>
+
+    <section class="scanner">
+      <div class="viewfinder" id="viewfinder" role="img" aria-label="Visor de cámara">
+        <div class="scan-line" aria-hidden="true"></div>
+      </div>
+      <p class="hint">Enfoca el código QR dentro del recuadro</p>
+    </section>
+
+    <section class="bottom">
+      <button class="upload" type="button" id="upload">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#71058F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M13.5 4H6.5A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5V11"/>
+          <circle cx="8.6" cy="9.4" r="1.4"/>
+          <path d="M4.2 18l4.6-4.6a1.6 1.6 0 0 1 2.2 0L14 16.4l1.6-1.6a1.6 1.6 0 0 1 2.2 0L20 17"/>
+          <path d="M18 2.6v5.2M15.4 5.2h5.2"/>
+        </svg>
+        <span>Subir una imagen con QR</span>
+      </button>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // Ajuste de altura real en navegadores móviles sin soporte de dvh
+      var screenEl = document.getElementById('screen');
+      function fitHeight() {
+        if (window.CSS && CSS.supports && CSS.supports('height', '100dvh')) return;
+        var h = window.innerHeight;
+        screenEl.style.height = h + 'px';
+        screenEl.style.width = Math.min(window.innerWidth, h * 1251 / 2576) + 'px';
+      }
+      fitHeight();
+      window.addEventListener('resize', fitHeight);
+      window.addEventListener('orientationchange', fitHeight);
+
+      // ---------- Cámara en el recuadro central ----------
+      var video = document.getElementById('camera');
+      var stream = null;
+
+      function startCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+        navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 1280 }
+          },
+          audio: false
+        }).then(function (s) {
+          stream = s;
+          video.srcObject = s;
+          var p = video.play();
+          if (p && p.catch) p.catch(function () {});
+          video.addEventListener('playing', function () {
+            screenEl.classList.add('is-live');
+          }, { once: true });
+        }).catch(function () {
+          // Sin permiso o sin cámara: se mantiene el recuadro estático
+        });
+      }
+
+      function stopCamera() {
+        if (stream) {
+          stream.getTracks().forEach(function (t) { t.stop(); });
+          stream = null;
+        }
+        video.srcObject = null;
+        screenEl.classList.remove('is-live');
+      }
+
+      document.querySelector('.close').addEventListener('click', stopCamera);
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) stopCamera(); else if (!stream) startCamera();
+      });
+      window.addEventListener('pagehide', stopCamera);
+      startCamera();
+
+      // Evita el zoom por doble toque y el menú contextual en la interfaz
+      document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+    })();
+  </script>
+</body>
+</html>
